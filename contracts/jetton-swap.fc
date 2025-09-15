@@ -1,0 +1,91 @@
+;; Jetton Wallet Smart Contract
+
+#pragma version >=0.4.3;
+
+#include "stdlib.fc";
+#include "op-codes.fc";
+#include "workchain.fc";
+#include "jetton-utils.fc";
+#include "gas.fc";
+
+{-
+  Storage
+
+  Note, status is always equal 0 and unused for now.
+
+  storage#_ status:uint4
+            balance:Coins owner_address:MsgAddressInt
+            jetton_master_address:MsgAddressInt = Storage;
+-}
+
+(slice, slice, slice) load_data() inline {
+    slice ds = get_data().begin_parse();
+    var data = (
+        ds~load_msg_addr(), ;; owner_address
+        ds~load_msg_addr(), ;; jetton_wallet_address
+        ds~load_msg_addr() ;; jetton_master_address
+    );
+    ds.end_parse();
+    return data;
+}
+
+() save_data(slice owner_address, slice jetton_wallet_address, slice jetton_master_address) impure inline {
+    set_data(begin_cell()
+        .store_slice(owner_address)
+        .store_slice(jetton_wallet_address)
+        .store_slice(jetton_master_address)
+        .end_cell());
+}
+
+
+
+;; () on_bounce(slice in_msg_body) impure inline {
+;;     in_msg_body~skip_bounced_prefix();
+;;     (int status, int balance, slice owner_address, slice jetton_master_address) = load_data();
+;;     int op = in_msg_body~load_op();
+;;     throw_unless(error::wrong_op, (op == op::internal_transfer) | (op == op::burn_notification));
+;;     in_msg_body~skip_query_id();
+;;     int jetton_amount = in_msg_body~load_coins();
+;;     save_data(status, balance + jetton_amount, owner_address, jetton_master_address);
+;; }
+
+() recv_internal(int my_ton_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) {
+        return (); ;; Just accept TON deposit
+    }
+    slice in_msg_full_slice = in_msg_full.begin_parse();
+    int msg_flags = in_msg_full_slice~load_msg_flags();
+    if (msg_flags & 1) { ;; is bounced
+        ;; on_bounce(in_msg_body);
+        return ();
+    }
+    slice sender_address = in_msg_full_slice~load_msg_addr();
+    ;; int fwd_fee_from_in_msg = in_msg_full_slice~retrieve_fwd_fee();
+    ;; int fwd_fee = get_original_fwd_fee(MY_WORKCHAIN, fwd_fee_from_in_msg); ;; we use message fwd_fee for estimation of forward_payload costs
+    (slice owner_address, slice wallet_address, slice jetton_master_address) = load_data();
+    int op = in_msg_body~load_op();
+
+   
+    if (op == op::change_wallet_addr) {
+        ~strdump("op::change_wallet_addr");
+        throw_unless(error::not_owner, equal_slices_bits(sender_address, owner_address));
+        in_msg_body~skip_bits(64); ;; query id
+        slice new_wallet_address = in_msg_body~load_msg_addr();
+        ~dump(slice_bits(new_wallet_address));
+        save_data(owner_address, new_wallet_address, jetton_master_address);
+        return();
+    }
+    
+
+    
+
+    throw(error::wrong_op);
+}
+
+(slice, slice, slice) get_jswap_data() method_id {
+    ~strdump("get_jswap_data");
+    (slice owner_address, slice jetton_wallet_address, slice jetton_master_address) = load_data();
+    return (owner_address, jetton_wallet_address, jetton_master_address);
+}
+
+

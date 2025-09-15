@@ -17,6 +17,8 @@ export abstract class Op {
     static top_up = 0xd372158c;
     static change_metadata_url = 0xcb862902;
     static set_status = 0xeed236d3;
+    // JETTON SWAP
+    static change_jwallet_addr = 0x6368616e;
 }
 
 export abstract class Errors {

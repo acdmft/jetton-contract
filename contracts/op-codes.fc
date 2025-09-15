@@ -18,6 +18,9 @@ const error::not_owner = 73;
 const error::not_valid_wallet = 74;
 const error::wrong_workchain = 333;
 
+;; jetton-swap
+const op::swap = 0x465bc2a;
+const op::change_wallet_addr = 0x6368616e;
 ;; jetton-minter
 
 const op::mint = 0x642b7d07;
