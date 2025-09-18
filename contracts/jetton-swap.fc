@@ -13,10 +13,14 @@
 
   Note, status is always equal 0 and unused for now.
 
-  storage#_ status:uint4
-            balance:Coins owner_address:MsgAddressInt
+  storage#_ owner_address:MsgAddressInt jetton_wallet_address:MsgAddressInt
             jetton_master_address:MsgAddressInt = Storage;
 -}
+
+const const::token_price = 1; ;; 1 NanoTON
+const const::token_storage_fee = 48000000; ;; 0.048 TON
+const const::mint_fee = 10000000; ;; 0.01 TON
+const const::min_tons_for_storage = 10000000; ;; 0.01 TON
 
 (slice, slice, slice) load_data() inline {
     slice ds = get_data().begin_parse();
@@ -36,9 +40,6 @@
         .store_slice(jetton_master_address)
         .end_cell());
 }
-
-
-
 ;; () on_bounce(slice in_msg_body) impure inline {
 ;;     in_msg_body~skip_bounced_prefix();
 ;;     (int status, int balance, slice owner_address, slice jetton_master_address) = load_data();
@@ -67,23 +68,47 @@
 
    
     if (op == op::change_wallet_addr) {
-        ~strdump("op::change_wallet_addr");
         throw_unless(error::not_owner, equal_slices_bits(sender_address, owner_address));
         in_msg_body~skip_bits(64); ;; query id
         slice new_wallet_address = in_msg_body~load_msg_addr();
-        ~dump(slice_bits(new_wallet_address));
         save_data(owner_address, new_wallet_address, jetton_master_address);
         return();
     }
     
+    if (op == op::swap) {
+        throw_unless(error::not_enough_gas, (msg_value > const::token_storage_fee + const::mint_fee));
+        int jetton_amount = msg_value - const::token_storage_fee - const::mint_fee;
+        ~strdump("op::swap jetton_amount");
+        ~dump(jetton_amount);
+        int query_id = in_msg_body~load_query_id();
+        var jetton_transfer_body = begin_cell()
+            .store_uint(op::transfer, 32)
+            .store_query_id(query_id) ;; query_id
+            .store_coins(jetton_amount)
+            .store_slice(sender_address) ;; destination:MsgAddress
+            .store_slice(my_address()) ;; response_destination:MsgAddress
+            .store_uint(0, 1) ;; custom payload:(Maybe ^Cell) - nothing
+            .store_coins(12) ;; forward_ton amount
+            .store_uint(0, 1) ;; forward_payload:(Either Cell ^Cell) - left Cell
+            .end_cell();
+        
+        var msg = begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(wallet_address)
+            .store_coins(const::min_tons_for_storage + const::mint_fee) ;; msg_value for jetton transfer
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1) ;; extra currencies, ihr_fee, fwd_fee, created_lt, created_at
+            .store_uint(1, 1)
+            .store_ref(jetton_transfer_body)      ;; message body as reference
+            .end_cell();
 
-    
+        send_raw_message(msg, 1); ;; pay fees separately
+        return ();
+    }
 
     throw(error::wrong_op);
 }
 
 (slice, slice, slice) get_jswap_data() method_id {
-    ~strdump("get_jswap_data");
     (slice owner_address, slice jetton_wallet_address, slice jetton_master_address) = load_data();
     return (owner_address, jetton_wallet_address, jetton_master_address);
 }
