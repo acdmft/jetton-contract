@@ -21,6 +21,7 @@ const error::wrong_workchain = 333;
 ;; jetton-swap
 const op::swap = 0x465bc2a;
 const op::change_wallet_addr = 0x6368616e;
+const op::withdraw_tons = 0x768a50b2;
 ;; jetton-minter
 
 const op::mint = 0x642b7d07;

@@ -20,6 +20,7 @@ export abstract class Op {
     // JETTON SWAP
     static change_jwallet_addr = 0x6368616e;
     static swap = 0x465bc2a;
+    static withdraw_ton = 0x768a50b2;
 }
 
 export abstract class Errors {

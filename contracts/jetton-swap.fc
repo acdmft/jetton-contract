@@ -40,6 +40,7 @@ const const::min_tons_for_storage = 10000000; ;; 0.01 TON
         .store_slice(jetton_master_address)
         .end_cell());
 }
+;; TODO: on_bounce()
 ;; () on_bounce(slice in_msg_body) impure inline {
 ;;     in_msg_body~skip_bounced_prefix();
 ;;     (int status, int balance, slice owner_address, slice jetton_master_address) = load_data();
@@ -103,6 +104,29 @@ const const::min_tons_for_storage = 10000000; ;; 0.01 TON
 
         send_raw_message(msg, 1); ;; pay fees separately
         return ();
+    }
+
+    if (op == op::withdraw_tons) {
+        throw_unless(error::not_owner, equal_slices_bits(sender_address, owner_address));
+        in_msg_body~skip_bits(64); ;; query id
+        int withdraw_amount = in_msg_body~load_coins();
+        var [balance, _] = get_balance();
+        int return_value = min(withdraw_amount, balance - const::min_tons_for_storage);
+
+        int msg_mode = 1; ;; 0 (Ordinary message) + 1 (Pay transfer fees separately from the message value)
+
+        var msg = begin_cell()
+              .store_uint(0x18, 6)
+              .store_slice(sender_address)
+              .store_coins(return_value)
+              .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+
+        ~strdump("op::withdraw_tons return_value balance withdraw_amount");
+        ~dump(return_value);
+        ~dump(balance);
+        ~dump(withdraw_amount);
+        send_raw_message(msg.end_cell(), msg_mode);
+        return();
     }
 
     throw(error::wrong_op);

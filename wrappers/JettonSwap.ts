@@ -60,6 +60,18 @@ export class JettonSwap implements Contract {
     await provider.internal(via, { value: value, sendMode: SendMode.PAY_GAS_SEPARATELY, body: JettonSwap.swapMessage() });
   }
 
+  static withdrawTonsMessage(amount: bigint) {
+    return beginCell().storeUint(Op.withdraw_ton, 32).storeUint(0, 64).storeCoins(amount).endCell();
+  }
+
+  async sendWithdrawTons(provider: ContractProvider, via: Sender, amount: bigint) {
+    await provider.internal(via, {
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: JettonSwap.withdrawTonsMessage(amount),
+      value: toNano("0.002"),
+    });
+  }
+
   // GETTERS
   async getJettonSwapData(provider: ContractProvider) {
     let { stack } = await provider.get("get_jswap_data", []);

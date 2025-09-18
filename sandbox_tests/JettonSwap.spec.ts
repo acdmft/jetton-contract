@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, TreasuryContract, internal, BlockchainSnapshot, SendMessageResult, BlockchainTransaction } from "@ton/sandbox";
-import { Cell, toNano, beginCell, Address, Transaction, storeAccountStorage, Dictionary, storeMessage, fromNano, DictionaryValue } from "@ton/core";
+import { Cell, toNano, beginCell, Address, Transaction, storeAccountStorage, Dictionary, storeMessage, fromNano, DictionaryValue, SendMode } from "@ton/core";
 import { JettonWallet } from "../wrappers/JettonWallet";
 import { jettonContentToCell, JettonMinter, JettonMinterContent } from "../wrappers/JettonMinter";
 import "@ton/test-utils";
@@ -359,15 +359,15 @@ describe("JettonWallet", () => {
     const jSwapData = await jettonSwap.getJettonSwapData();
     expect(jSwapData.wallet_address).toEqualAddress(jettonSwapWallet.address);
     // get jetton-swap and jetton-swap-wallet initial balances
-    const jettonSwapInitBalance =  (await blockchain.getContract(jettonSwap.address)).balance;
-    const jetttonSwapWalletInitBalance =  (await blockchain.getContract(jettonSwapWallet.address)).balance;
+    const jettonSwapInitBalance = (await blockchain.getContract(jettonSwap.address)).balance;
+    const jetttonSwapWalletInitBalance = (await blockchain.getContract(jettonSwapWallet.address)).balance;
     // send swap message from notDeployer to change tons for jettons
     const jSwapResult = await jettonSwap.sendSwapMessage(notDeployer.getSender(), toNano("10.133"));
     expect(jSwapResult.transactions).toHaveTransaction({
       from: notDeployer.address,
       to: jettonSwap.address,
       op: Op.swap,
-      success: true
+      success: true,
     });
     const expectedJettonAmount = toNano("10.133") - 48000000n - 10000000n;
     console.log("expectedJettonAmount ", expectedJettonAmount);
@@ -380,27 +380,75 @@ describe("JettonWallet", () => {
         .storeUint(51117, 64)
         .storeCoins(expectedJettonAmount) // jetton amount
         .storeAddress(notDeployer.address)
-        .storeAddress(jettonSwap.address)  // response_destination
-        .storeUint(0, 1)  // custom payload:(Maybe ^Cell) - nothing
+        .storeAddress(jettonSwap.address) // response_destination
+        .storeUint(0, 1) // custom payload:(Maybe ^Cell) - nothing
         .storeCoins(12n) // forward_ton amount
         .storeUint(0, 1) // forward_payload:(Either Cell ^Cell) - left Cell
         .endCell(),
-      success: true
+      success: true,
     });
-    // check that user has received the jettons 
+    // check that user has received the jettons
     const notDeployerJWallet = await userWallet(notDeployer.address);
     expect(jSwapResult.transactions).toHaveTransaction({
       from: jettonSwapWallet.address,
       to: notDeployerJWallet.address,
       deploy: true,
-      success: true
+      success: true,
     });
     expect(await notDeployerJWallet.getJettonBalance()).toEqual(expectedJettonAmount);
-    // check that the jetton-swap and jetton-swap-wallet didn't diminish 
-    const jettonSwapNewBalance =  (await blockchain.getContract(jettonSwap.address)).balance;
+    // check that the jetton-swap and jetton-swap-wallet didn't diminish
+    const jettonSwapNewBalance = (await blockchain.getContract(jettonSwap.address)).balance;
     expect(jettonSwapNewBalance).toBeGreaterThan(jettonSwapInitBalance);
-    const jettonSwapWalletNewBalance =  (await blockchain.getContract(jettonSwapWallet.address)).balance;
+    const jettonSwapWalletNewBalance = (await blockchain.getContract(jettonSwapWallet.address)).balance;
     expect(jettonSwapWalletNewBalance).toBeGreaterThanOrEqual(jetttonSwapWalletInitBalance);
-    console.log(`jettonSwapInitBalance: ${jettonSwapInitBalance} \n jettonSwapNewBalance: ${jettonSwapNewBalance} \n jettonSwapWalletInitBalance: ${jetttonSwapWalletInitBalance} \n jettonSwapWalletNewBalance: ${jettonSwapWalletNewBalance}`);
+    console.log(
+      `jettonSwapInitBalance: ${jettonSwapInitBalance} \n jettonSwapNewBalance: ${jettonSwapNewBalance} \n jettonSwapWalletInitBalance: ${jetttonSwapWalletInitBalance} \n jettonSwapWalletNewBalance: ${jettonSwapWalletNewBalance}`,
+    );
+
+    // TODO: tests for on_bounce() - when message to jetton-wallet is bounced
+  });
+
+  it("should withdraw tons when op::withdraw_tons message from owner", async () => {
+    // deploy jetton-swap, mint jettons, set wallet address, swap jettons
+    await jettonSwap.sendDeploy(deployer.getSender(), toNano("1"));
+    await jettonMinter.sendDeploy(deployer.getSender(), toNano("10"));
+    const jettonSwapWallet = await userWallet(jettonSwap.address);
+    let initialJettonBalance = toNano("1000.23");
+    const mintResult = await jettonMinter.sendMint(deployer.getSender(), jettonSwap.address, initialJettonBalance, null, null, null, toNano("0.05"), toNano("1"));
+    await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), jettonSwapWallet.address);
+    const jSwapResult = await jettonSwap.sendSwapMessage(notDeployer.getSender(), toNano("10.133"));
+    // withdraw tons
+    const withdrawResult = await jettonSwap.sendWithdrawTons(deployer.getSender(), toNano("5"));
+    expect(withdrawResult.transactions).toHaveTransaction({
+      from: jettonSwap.address,
+      to: deployer.address,
+      value: toNano("5"),
+      success: true,
+    });
+    // check that it keeps the minimum storage amount
+    min_tons_for_storage = 10000000n;
+    const jswapBalance = (await blockchain.getContract(jettonSwap.address)).balance;
+    const withdrawAmount = jswapBalance + 10000n;
+    const withdrawTooMuchResult = await jettonSwap.sendWithdrawTons(deployer.getSender(), withdrawAmount);
+    expect(withdrawTooMuchResult.transactions).toHaveTransaction({
+      from: jettonSwap.address,
+      to: deployer.address,
+      // value: jswapBalance - min_tons_for_storage,
+      success: true,
+    });
+    // check that it refuses to withdraw when message is not from owner (admin)
+    await notDeployer.send({
+      to: jettonSwap.address,
+      value: toNano("1"),
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+    });
+    const nonEligibleWithdrawResult = await jettonSwap.sendWithdrawTons(notDeployer.getSender(), toNano('1'));
+    expect(nonEligibleWithdrawResult.transactions).toHaveTransaction({
+      to: jettonSwap.address,
+      from: notDeployer.address,
+      op: Op.withdraw_ton,
+      success: false,
+      exitCode: Errors.not_owner
+    });
   });
 });
