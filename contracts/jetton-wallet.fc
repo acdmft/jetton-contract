@@ -42,10 +42,8 @@
     check_same_workchain(to_owner_address);
     (int status, int balance, slice owner_address, slice jetton_master_address) = load_data();
     throw_unless(error::not_owner, equal_slices_bits(owner_address, sender_address));
-    
+
     balance -= jetton_amount;
-    ~strdump("send_jettons balance");
-    ~dump(balance);
     throw_unless(error::balance_error, balance >= 0);
 
     cell state_init = calculate_jetton_wallet_state_init(to_owner_address, jetton_master_address, my_code());
@@ -201,7 +199,6 @@
 
     ;; outgoing transfer
     if (op == op::transfer) {
-        ~strdump("op::transfer");
         send_jettons(in_msg_body, sender_address, msg_value, fwd_fee);
         return ();
     }

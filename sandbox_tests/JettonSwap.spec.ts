@@ -124,7 +124,6 @@ describe("JettonWallet", () => {
           ownerAddress: deployer.address,
           jwalletAddress: randomAddress(0), // new Address(0, Buffer.alloc(32, 0)),
           jettonMasterAddress: jettonMinter.address,
-          jettonBalance: 0n
         },
         jswap_code,
       ),
@@ -322,7 +321,7 @@ describe("JettonWallet", () => {
     const adminAddr = await jettonSwap.getAdminAddress();
     expect(adminAddr).toEqualAddress(deployer.address);
     const newJWalletAddress = randomAddress(0);
-    const changeResult = await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), newJWalletAddress, 0n);
+    const changeResult = await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), newJWalletAddress);
     expect(changeResult.transactions).toHaveTransaction({
       from: deployer.address,
       to: jettonSwap.address,
@@ -335,7 +334,7 @@ describe("JettonWallet", () => {
 
   it("should refuse to change wallet address to no-owner", async () => {
     await jettonSwap.sendDeploy(deployer.getSender(), toNano("0.1"));
-    const changeResult = await jettonSwap.sendChangeJWalletAddr(notDeployer.getSender(), randomAddress(0), 0n);
+    const changeResult = await jettonSwap.sendChangeJWalletAddr(notDeployer.getSender(), randomAddress(0));
     expect(changeResult.transactions).toHaveTransaction({
       from: notDeployer.address,
       to: jettonSwap.address,
@@ -352,11 +351,11 @@ describe("JettonWallet", () => {
     // calculate jetton-swap wallet address
     const jettonSwapWallet = await userWallet(jettonSwap.address);
     // mint tokens for jetton-swap (create jeton-swap wallet)
-    let initialJettonBalance = toNano("100.23");
+    let initialJettonBalance = toNano("1000.23");
     const mintResult = await jettonMinter.sendMint(deployer.getSender(), jettonSwap.address, initialJettonBalance, null, null, null, toNano("0.05"), toNano("1"));
     expect(await jettonSwapWallet.getJettonBalance()).toEqual(initialJettonBalance);
     // update jetton-wallet-address in jetton-swap
-    const changeResult = await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), jettonSwapWallet.address, initialJettonBalance);
+    const changeResult = await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), jettonSwapWallet.address);
     const jSwapData = await jettonSwap.getJettonSwapData();
     expect(jSwapData.wallet_address).toEqualAddress(jettonSwapWallet.address);
     // get jetton-swap and jetton-swap-wallet initial balances
@@ -405,35 +404,7 @@ describe("JettonWallet", () => {
     console.log(
       `jettonSwapInitBalance: ${jettonSwapInitBalance} \n jettonSwapNewBalance: ${jettonSwapNewBalance} \n jettonSwapWalletInitBalance: ${jetttonSwapWalletInitBalance} \n jettonSwapWalletNewBalance: ${jettonSwapWalletNewBalance}`,
     );
-    
-  });
-  it("should throw error when too much jettons requested", async () => {
-    // deploy jetton-swap
-    await jettonMinter.sendDeploy(deployer.getSender(), toNano("10"));
-    await jettonSwap.sendDeploy(deployer.getSender(), toNano("10"));
-    // calculate jetton-swap wallet address
-    const jettonSwapWallet = await userWallet(jettonSwap.address);
-    // set jetton-wallet for jetton-swap
-    let initialJettonBalance = toNano("100.23");
-    await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), jettonSwapWallet.address, initialJettonBalance);
-    // mint tokens for jetton-swap (create jeton-swap wallet)
-    const mintResult = await jettonMinter.sendMint(deployer.getSender(), jettonSwap.address, initialJettonBalance, null, null, null, toNano("0.05"), toNano("1"));
-    expect(await jettonSwapWallet.getJettonBalance()).toEqual(initialJettonBalance);
-    // check it throws error when 
-    const excessiveJAmount = initialJettonBalance + toNano('10');
-    const initJSwapBalance = (await blockchain.getContract(jettonSwap.address)).balance;
-    const swapTooMuchJettonResult = await jettonSwap.sendSwapMessage(notDeployer.getSender(), excessiveJAmount);
-    expect(swapTooMuchJettonResult.transactions).toHaveTransaction({
-      from: notDeployer.address,
-      to: jettonSwap.address,
-      op: Op.swap,
-      success: false,
-      exitCode: Errors.balance_error
-    });
-    // check that jetton-swap balance doesn't diminish when balance_error is thrown
-    const newJSwapBalance = (await blockchain.getContract(jettonSwap.address)).balance;
-    expect(newJSwapBalance).toBeGreaterThanOrEqual(initJSwapBalance);
-    console.log(`initJSwapBalance: ${initJSwapBalance} \n newJSwapBalance: ${newJSwapBalance}`);
+
     // TODO: tests for on_bounce() - when message to jetton-wallet is bounced
   });
 
@@ -444,7 +415,7 @@ describe("JettonWallet", () => {
     const jettonSwapWallet = await userWallet(jettonSwap.address);
     let initialJettonBalance = toNano("1000.23");
     const mintResult = await jettonMinter.sendMint(deployer.getSender(), jettonSwap.address, initialJettonBalance, null, null, null, toNano("0.05"), toNano("1"));
-    await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), jettonSwapWallet.address, initialJettonBalance);
+    await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), jettonSwapWallet.address);
     const jSwapResult = await jettonSwap.sendSwapMessage(notDeployer.getSender(), toNano("10.133"));
     // withdraw tons
     const withdrawResult = await jettonSwap.sendWithdrawTons(deployer.getSender(), toNano("5"));
@@ -471,13 +442,13 @@ describe("JettonWallet", () => {
       value: toNano("1"),
       sendMode: SendMode.PAY_GAS_SEPARATELY,
     });
-    const nonEligibleWithdrawResult = await jettonSwap.sendWithdrawTons(notDeployer.getSender(), toNano("1"));
+    const nonEligibleWithdrawResult = await jettonSwap.sendWithdrawTons(notDeployer.getSender(), toNano('1'));
     expect(nonEligibleWithdrawResult.transactions).toHaveTransaction({
       to: jettonSwap.address,
       from: notDeployer.address,
       op: Op.withdraw_ton,
       success: false,
-      exitCode: Errors.not_owner,
+      exitCode: Errors.not_owner
     });
   });
 });

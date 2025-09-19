@@ -300,176 +300,62 @@ PROGRAM{
     LDMSGADDR
     LDMSGADDR
     LDMSGADDR
-    LDVARUINT16
     ENDS
   }>
   save_data PROCINLINE:<{
     NEWC
-    s0 s4 XCHG2
-    STSLICER
-    ROT
+    s0 s3 XCHG2
     STSLICER
     SWAP
     STSLICER
     SWAP
-    STVARUINT16
+    STSLICER
     ENDC
     c4 POP
   }>
   recv_internal PROC:<{
-    s3 POP
-    s2 PUSH
+    2 2 BLKDROP2
+    DUP
     SEMPTY
     IFJMP:<{
-      3 BLKDROP
+      2DROP
+      x{656d707479206d73675f626f6479} PUSHSLICE
+      STRDUMP
+      DROP
     }>
+    SWAP
     CTOS
     ~load_msg_flags INLINECALLDICT
+    x{6d73675f666c616773} PUSHSLICE
+    STRDUMP
+    DROP
+    DUP
+    s0 DUMP
+    DROP
     1 PUSHINT
     AND
     IFJMP:<{
-      3 BLKDROP
+      2DROP
     }>
     LDMSGADDR
     DROP
     load_data INLINECALLDICT
-    s0 s6 XCHG
+    NIP
+    s0 s3 XCHG
     ~load_op INLINECALLDICT
-    DUP
     1667785070 PUSHINT
     EQUAL
     IFJMP:<{
-      DROP
-      s2 POP
-      s4 POP
-      s4 POP
-      TUCK
+      s2 s1 XCPU
       SDEQ
-      73 THROWIFNOT
-      s0 s2 XCHG
-      64 PUSHINT
-      SDSKIPFIRST
+      403 THROWIFNOT
+      SWAP
       LDMSGADDR
-      LDVARUINT16
       DROP
-      s1 s2 XCHG
+      ROT
       save_data INLINECALLDICT
     }>
-    DUP
-    73776170 PUSHINT
-    EQUAL
-    IFJMP:<{
-      DROP
-      s5 PUSH
-      58000000 PUSHINT
-      GREATER
-      48 THROWIFNOT
-      s0 s5 XCHG
-      48000000 PUSHINT
-      SUB
-      10000000 PUSHINT
-      SUB
-      s0 s6 PUSH2
-      GEQ
-      47 THROWIFNOT
-      x{6f703a3a73776170206a6574746f6e5f616d6f756e74} PUSHSLICE
-      STRDUMP
-      DROP
-      DUP
-      s0 DUMP
-      DROP
-      s0 s5 XCHG
-      ~load_query_id INLINECALLDICT
-      NIP
-      0 PUSHINT
-      DUP
-      260734629 PUSHINT
-      NEWC
-      32 STU
-      s0 s3 XCHG2
-      store_query_id INLINECALLDICT
-      s7 PUSH
-      STVARUINT16
-      s0 s6 XCHG2
-      STSLICER
-      MYADDR
-      STSLICER
-      1 STU
-      12 PUSHINT
-      STVARUINT16
-      s1 s4 XCHG
-      1 STU
-      ENDC
-      1 PUSHINT
-      0 PUSHINT
-      24 PUSHINT
-      NEWC
-      6 STU
-      s4 PUSH
-      STSLICER
-      20000000 PUSHINT
-      STVARUINT16
-      106 STU
-      1 STU
-      STREF
-      ENDC
-      17 PUSHINT
-      SENDRAWMSG
-      s4 s3 XCHG2
-      SUB
-      save_data INLINECALLDICT
-    }>
-    s6 POP
-    s6 POP
-    2DROP
-    s0 s2 XCHG
-    1988776114 PUSHINT
-    EQUAL
-    IFJMP:<{
-      s0 s1 PUXC
-      SDEQ
-      73 THROWIFNOT
-      SWAP
-      64 PUSHINT
-      SDSKIPFIRST
-      LDVARUINT16
-      DROP
-      BALANCE
-      UNPAIR
-      DROP
-      DUP
-      10000000 PUSHINT
-      SUB
-      s2 s(-1) PUXC
-      MIN
-      1 PUSHINT
-      0 PUSHINT
-      24 PUSHINT
-      NEWC
-      6 STU
-      s0 s6 XCHG2
-      STSLICER
-      s2 PUSH
-      STVARUINT16
-      s1 s5 XCHG
-      107 STU
-      x{6f703a3a77697468647261775f746f6e732072657475726e5f76616c75652062616c616e63652077697468647261775f616d6f756e74} PUSHSLICE
-      STRDUMP
-      DROP
-      SWAP
-      s0 DUMP
-      DROP
-      SWAP
-      s0 DUMP
-      DROP
-      SWAP
-      s0 DUMP
-      DROP
-      ENDC
-      SWAP
-      SENDRAWMSG
-    }>
-    3 BLKDROP
+    4 BLKDROP
     16 PUSHPOW2DEC
     THROWANY
   }>
