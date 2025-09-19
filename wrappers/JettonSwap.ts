@@ -6,10 +6,11 @@ export type JettonSwapConfig = {
   ownerAddress: Address;
   jwalletAddress: Address;
   jettonMasterAddress: Address;
+  jettonBalance: bigint
 };
 
 export function jettonSwapConfigToCell(config: JettonSwapConfig): Cell {
-  return beginCell().storeAddress(config.ownerAddress).storeAddress(config.jwalletAddress).storeAddress(config.jettonMasterAddress).endCell();
+  return beginCell().storeAddress(config.ownerAddress).storeAddress(config.jwalletAddress).storeAddress(config.jettonMasterAddress).storeCoins(0n).endCell();
 }
 
 export class JettonSwap implements Contract {
@@ -36,18 +37,19 @@ export class JettonSwap implements Contract {
     });
   }
 
-  static changeJWalletAddrMessage(newJWalletAddress: Address) {
+  static changeJWalletAddrMessage(newJWalletAddress: Address, jettonBalance: bigint) {
     return beginCell()
       .storeUint(Op.change_jwallet_addr, 32)
       .storeUint(0, 64) // op, queryId
       .storeAddress(newJWalletAddress)
+      .storeCoins(jettonBalance)
       .endCell();
   }
 
-  async sendChangeJWalletAddr(provider: ContractProvider, via: Sender, newAddress: Address) {
+  async sendChangeJWalletAddr(provider: ContractProvider, via: Sender, newAddress: Address, jettonBalance: bigint) {
     await provider.internal(via, {
       sendMode: SendMode.PAY_GAS_SEPARATELY,
-      body: JettonSwap.changeJWalletAddrMessage(newAddress),
+      body: JettonSwap.changeJWalletAddrMessage(newAddress, jettonBalance),
       value: toNano("0.1"),
     });
   }
@@ -79,11 +81,17 @@ export class JettonSwap implements Contract {
       owner: stack.readAddress(),
       wallet_address: stack.readAddress(),
       minter: stack.readAddress(),
+      jetton_balance: stack.readBigNumber()
     };
   }
 
   async getAdminAddress(provider: ContractProvider) {
     let res = await this.getJettonSwapData(provider);
     return res.owner;
+  }
+
+  async getJettonBalance(provider: ContractProvider) {
+    let res = await this.getJettonSwapData(provider);
+    return res.jetton_balance;
   }
 }
