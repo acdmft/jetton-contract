@@ -413,14 +413,12 @@ describe("JettonWallet", () => {
     await jettonSwap.sendDeploy(deployer.getSender(), toNano("10"));
     // calculate jetton-swap wallet address
     const jettonSwapWallet = await userWallet(jettonSwap.address);
-    // set jetton-wallet for jetton-swap
-    let initialJettonBalance = toNano("100.23");
-    await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), jettonSwapWallet.address, initialJettonBalance);
-    // mint tokens for jetton-swap (create jeton-swap wallet)
-    const mintResult = await jettonMinter.sendMint(deployer.getSender(), jettonSwap.address, initialJettonBalance, null, null, null, toNano("0.05"), toNano("1"));
-    expect(await jettonSwapWallet.getJettonBalance()).toEqual(initialJettonBalance);
-    // check it throws error when 
-    const excessiveJAmount = initialJettonBalance + toNano('10');
+    // set jetton-wallet and jetton balance for jetton-swap
+    let jettonWalletBalance = await jettonSwapWallet.getJettonBalance();
+    await jettonSwap.sendChangeJWalletAddr(deployer.getSender(), jettonSwapWallet.address, jettonWalletBalance);
+    expect(await jettonSwap.getJettonBalance()).toEqual(jettonWalletBalance);
+    // check it throws error when excessive amount is demanded
+    const excessiveJAmount = jettonWalletBalance + toNano('10');
     const initJSwapBalance = (await blockchain.getContract(jettonSwap.address)).balance;
     const swapTooMuchJettonResult = await jettonSwap.sendSwapMessage(notDeployer.getSender(), excessiveJAmount);
     expect(swapTooMuchJettonResult.transactions).toHaveTransaction({
