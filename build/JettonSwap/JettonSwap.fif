@@ -370,14 +370,8 @@ PROGRAM{
       10000000 PUSHINT
       SUB
       s0 s6 PUSH2
-      GEQ
+      LEQ
       47 THROWIFNOT
-      x{6f703a3a73776170206a6574746f6e5f616d6f756e74} PUSHSLICE
-      STRDUMP
-      DROP
-      DUP
-      s0 DUMP
-      DROP
       s0 s5 XCHG
       ~load_query_id INLINECALLDICT
       NIP
@@ -422,10 +416,11 @@ PROGRAM{
     s6 POP
     s6 POP
     2DROP
-    s0 s2 XCHG
+    s2 PUSH
     1988776114 PUSHINT
     EQUAL
     IFJMP:<{
+      s2 POP
       s0 s1 PUXC
       SDEQ
       73 THROWIFNOT
@@ -437,37 +432,34 @@ PROGRAM{
       BALANCE
       UNPAIR
       DROP
-      DUP
       10000000 PUSHINT
       SUB
-      s2 s(-1) PUXC
       MIN
       1 PUSHINT
       0 PUSHINT
       24 PUSHINT
       NEWC
       6 STU
-      s0 s6 XCHG2
+      s0 s4 XCHG2
       STSLICER
-      s2 PUSH
+      ROT
       STVARUINT16
-      s1 s5 XCHG
+      s1 s2 XCHG
       107 STU
-      x{6f703a3a77697468647261775f746f6e732072657475726e5f76616c75652062616c616e63652077697468647261775f616d6f756e74} PUSHSLICE
-      STRDUMP
-      DROP
-      SWAP
-      s0 DUMP
-      DROP
-      SWAP
-      s0 DUMP
-      DROP
-      SWAP
-      s0 DUMP
-      DROP
       ENDC
       SWAP
       SENDRAWMSG
+    }>
+    s0 s2 XCHG
+    621336170 PUSHINT
+    EQUAL
+    IFJMP:<{
+      SWAP
+      SDEQ
+      73 THROWIFNOT
+      LDREF
+      ENDS
+      SETCODE
     }>
     3 BLKDROP
     16 PUSHPOW2DEC
